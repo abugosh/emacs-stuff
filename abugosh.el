@@ -56,6 +56,9 @@
 
 (setq browse-url-browser-function 'browse-default-macosx-browser)
 
+(load (concat dotfiles-dir "vendor/ess/lisp/ess-site.el"))
+(require 'ess-site)
+
 ;; Full screen toggle
 (defun toggle-fullscreen ()
   (interactive)
