@@ -225,4 +225,4 @@ When called repeatedly, indent each time one stop further on the right."
       (progn 
 	(newline-and-indent)
 	(insert "* "))
-    (newline)))
+    (newline-and-indent)))

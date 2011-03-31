@@ -1,8 +1,7 @@
 ;; Save backups in one place
 ;; Put autosave files (ie #foo#) in one place, *not*
 ;; scattered all over the file system!
-(defvar autosave-dir
-  (concat "/tmp/emacs_autosaves/" (user-login-name) "/"))
+(defvar autosave-dir "/Users/abugosh/tmp/emacs_autosaves/")
 (make-directory autosave-dir t)
 
 (defun auto-save-file-name-p (filename)
@@ -44,7 +43,7 @@
 (add-to-list 'load-path (concat dotfiles-dir "/vendor/scala-mode"))
 (require 'scala-mode)
 (add-to-list 'auto-mode-alist '("\\.scala$" . scala-mode))
-(add-to-list 'load-path (concat dotfiles-dir "vendor/ensime/src/main/elisp"))
+(add-to-list 'load-path (concat dotfiles-dir "vendor/ensime/elisp"))
 (require 'ensime)
 (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
 
@@ -138,6 +137,8 @@
 (global-set-key [(control \])] 'indent-rigidly)
 
 (global-set-key (kbd "M-/") 'dabbrev-expand)
+
+(global-set-key (kbd "RET") 'newline-and-indent)
 
 ;; Other
 
