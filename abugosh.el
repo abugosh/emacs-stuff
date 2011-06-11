@@ -25,33 +25,25 @@
   (revert-buffer t t t))
 (global-set-key [f5] 'refresh-file)
 
-;; org-mode
-(add-to-list 'load-path (concat dotfiles-dir "/vendor/org-mode/lisp"))
-(add-to-list 'auto-mode-alist '("\\.\\(org\\|org_archive\\|txt\\)$" . org-mode))
-(require 'org-install)
-
-;; Override
-(add-hook 'org-mode-hook
-          (lambda()
-            (local-set-key [(control meta return)] 'org-insert-heading)
-            (local-set-key [(control shift left)] 'previous-buffer)
-            (local-set-key [(control shift right)] 'next-buffer)
-            (local-set-key [(meta shift right)] 'ido-switch-buffer)
-            (local-set-key [(meta shift left)] 'magit-status)
-            ))
-
-(add-to-list 'load-path (concat dotfiles-dir "/vendor/scala-mode"))
-(require 'scala-mode)
-(add-to-list 'auto-mode-alist '("\\.scala$" . scala-mode))
-(add-to-list 'load-path (concat dotfiles-dir "vendor/ensime/elisp"))
-(require 'ensime)
-(add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
-
-(load (concat dotfiles-dir "vendor/nxhtml/autostart.el"))
+(setq-default tab-width 2)
 
 (textmate-mode)
 (setq *textmate-gf-exclude* (concat *textmate-gf-exclude* "|target|lib_managed|project/boot|\.keep"))
 (setq *textmate-project-roots* (cons "ivy.xml" (cons "pom.xml" *textmate-project-roots*)))
+
+(add-to-list 'load-path (concat dotfiles-dir "/vendor/scala-mode"))
+(require 'scala-mode)
+(add-to-list 'auto-mode-alist '("\\.scala$" . scala-mode))
+(add-to-list 'load-path (concat dotfiles-dir "vendor/ensime/dist/elisp"))
+(require 'ensime)
+(add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
+
+(add-to-list 'load-path "~/.emacs.d/vendor/coffee-mode")
+(require 'coffee-mode)
+
+(add-to-list 'load-path (concat dotfiles-dir "vendor/zencoding"))
+(require 'zencoding-mode)
+(add-hook 'sgml-mode-hook 'zencoding-mode) ;; Auto-start on any markup modes
 
 (setq browse-url-browser-function 'browse-default-macosx-browser)
 
@@ -98,6 +90,40 @@
     (set-buffer-modified-p nil)
     t))))
 
+;;
+;; Use ido to navigate to symbols in the current file
+;;
+(defun ido-goto-symbol ()
+  "Will update the imenu index and then use ido to select a 
+   symbol to navigate to"
+  (interactive)
+  (imenu--make-index-alist)
+  (let ((name-and-pos '())
+        (symbol-names '()))
+    (flet ((addsymbols (symbol-list)
+                       (when (listp symbol-list)
+                         (dolist (symbol symbol-list)
+                           (let ((name nil) (position nil))
+                             (cond
+                              ((and (listp symbol) (imenu--subalist-p symbol))
+                               (addsymbols symbol))
+   
+                              ((listp symbol)
+                               (setq name (car symbol))
+                               (setq position (cdr symbol)))
+   
+                              ((stringp symbol)
+                               (setq name symbol)
+                               (setq position (get-text-property 1 'org-imenu-marker symbol))))
+   
+                             (unless (or (null position) (null name))
+                               (add-to-list 'symbol-names name)
+                               (add-to-list 'name-and-pos (cons name position))))))))
+      (addsymbols imenu--index-alist))
+    (let* ((selected-symbol (ido-completing-read "Symbol? " symbol-names))
+           (position (cdr (assoc selected-symbol name-and-pos))))
+      (goto-char position))))
+(global-set-key (kbd "C-t") 'ido-goto-symbol)
 
 ;; Keyboard
 
@@ -134,10 +160,6 @@
 
 ;; Fullscreen keybinding
 (global-set-key (kbd "M-RET") 'ns-toggle-fullscreen)
-
-;; Change the command key into meta since this version of emacs wants
-;; it to be alt :(
-(setq ns-command-modifier 'meta)
 
 ;; Other
 
