@@ -45,6 +45,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'mumamo))
+(eval-when-compile (require 'org))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Wrapping
@@ -165,7 +166,7 @@ Key bindings added by this minor mode:
       (set-window-margins win left-margin-width right-margin-width))
     ;; Indentation
     )
-  (visual-indent-mode wrap-to-fill-column-mode))
+  (visual-indent-mode (if wrap-to-fill-column-mode 1 -1)))
 (put 'wrap-to-fill-column-mode 'permanent-local t)
 
 (defcustom wrap-to-fill-major-modes '(org-mode
@@ -309,7 +310,10 @@ See `visual-indent-use-adaptive-fill' for more info.
   :group 'visual-indent
   ;;(visual-indent-font-lock visual-indent-mode)
   (if visual-indent-mode
-      (jit-lock-register 'visual-indent-jit-lock-fun)
+      (progn
+        (set (make-local-variable 'adaptive-fill-function) nil)
+        (jit-lock-register 'visual-indent-jit-lock-fun))
+    (kill-local-variable 'adaptive-fill-function)
     (jit-lock-unregister 'visual-indent-jit-lock-fun)
     (let ((here (point))
           (inhibit-field-text-motion t)
@@ -328,6 +332,7 @@ See `visual-indent-use-adaptive-fill' for more info.
                beg-pos end-pos
                '(wrap-prefix)))
             (forward-line))
+          ;;(remove-list-of-text-properties (point-min) (point-max) '(wrap-prefix))
           (remove-list-of-text-properties
            (point-min) (point-max)
            '(visual-indent-wrap-prefix)))
@@ -372,7 +377,7 @@ See `visual-indent-use-adaptive-fill' for more information."
                        (setq end-w (point))
                        (concat (buffer-substring (point-at-bol) beg-w)
                                (propertize
-                                (buffer-substring beg-w end-w)
+                                (buffer-substring-no-properties beg-w end-w)
                                 'face '( ;;
                                         :strike-through t
                                         ;; :slant italic
@@ -380,14 +385,17 @@ See `visual-indent-use-adaptive-fill' for more information."
                                         ;; :weight light
                                         :weight thin
                                         ))
-                               (buffer-substring end-w (match-end 0)))))))
+                               (buffer-substring-no-properties end-w (match-end 0)))))))
              (first-line-prefix (unless one-line-comment-prefix
                                   (goto-char beg)
-                                  (fill-match-adaptive-prefix)))
+                                  (let ((adaptive-fill-regexp (if (derived-mode-p 'org-mode)
+                                                                  org-adaptive-fill-regexp-backup
+                                                                adaptive-fill-regexp)))
+                                    (fill-match-adaptive-prefix))))
              (second-line-prefix (or first-line-prefix
                                      one-line-comment-prefix))
              (nc 0))
-        ;; (msgtrc "one-line-comment-prefix=%S %s %s %s" one-line-comment-prefix (zerop (length comment-end)) (looking-at comment-start-skip) comment-start-skip )
+        ;;(msgtrc "one-line-comment-prefix=%S %s %s %s" one-line-comment-prefix (zerop (length comment-end)) (when comment-start-skip (looking-at comment-start-skip)) comment-start-skip )
         ;; (elt "hej" 1)
         (unless one-line-comment-prefix
           (while (< nc (length second-line-prefix))
@@ -434,59 +442,70 @@ See `visual-indent-use-adaptive-fill' for more information."
     (save-restriction
       (widen)
       (let ((n-while 0)
-            (bound end)) ;;(save-excursion (goto-char end) (point-at-eol))))
+            (bound end) ;;(save-excursion (goto-char end) (point-at-eol))))
+            (last-point (1- beg)) ;; Protect against display engine errors.
+            )
         (goto-char beg)
         (goto-char (point-at-bol))
         ;;(unless (or (bolp) (eobp)) (forward-line 1))
         (while (and (visual-indent-while 200 'n-while "visual-indent-jit-lock-fun")
+                    (< last-point (point))
                     (< (point) bound)) ;; Max bound = (point-max)
           (let (ind-str-fill
                 (beg-pos (point))
                 (end-pos (point-at-eol)))
             (unless (= beg-pos (point-at-bol))
-              (message "visual-indent-fontify internal err: beg-pos /= point-at-bol"))
+              (message "visual-indent-jit-lock-fun internal err: beg-pos /= point-at-bol")
+              (gdb-deb-print "visual-indent-jit-lock-fun internal err: beg-pos /= point-at-bol")
+              )
             ;; Fix-me: Why did I check this? Step aside from org-mode or?
             (when (equal (get-text-property beg-pos 'wrap-prefix)
                          (get-text-property beg-pos 'visual-indent-wrap-prefix))
               (setq ind-str-fill
                     (visual-indent-fill-context-prefix beg-pos end-pos))
+              ;;(msgtrc "visual-indent-jit-lock-fun:ind-str-fill=%S" ind-str-fill)
               ;; Fix-me: ind-str-fill could be nil.
-              (with-silent-modifications
-                (put-text-property beg-pos end-pos 'wrap-prefix ind-str-fill)
-                (put-text-property beg-pos end-pos 'visual-indent-wrap-prefix ind-str-fill))))
+              (when (< 0 (length ind-str-fill))
+                (with-silent-modifications
+                  (put-text-property beg-pos end-pos 'wrap-prefix ind-str-fill)
+                  (put-text-property beg-pos end-pos 'visual-indent-wrap-prefix ind-str-fill)))))
           ;; This moves to the end of line if there is no more lines. That
           ;; means we will not get stuck here.
-          (unless (eobp) (forward-line 1)))))))
+          (unless (eobp) (forward-line 1))
+          (unless (< last-point (point))
+            (message "visual-indent-jit-lock-fun display engine error")
+            (gdb-deb-print "visual-indent-jit-lock-fun display engine error"))
+          )))))
 
 
 ;;; Code below is obsolete.
 
-(defun visual-indent-fontify (bound)
-  "During fontification mark lines for indentation.
-This is called as a matcher in `font-lock-keywords' in
-`visual-indent-mode'.  BOUND is the limit of fontification.
+;; (defun visual-indent-fontify (bound)
+;;   "During fontification mark lines for indentation.
+;; This is called as a matcher in `font-lock-keywords' in
+;; `visual-indent-mode'.  BOUND is the limit of fontification.
 
-Put the property 'wrap-prefix on lines whose continuation lines
-\(see `visual-line-mode') should be indented.  Only do this if
-`visual-line-mode' and `word-wrap' is on.
+;; Put the property 'wrap-prefix on lines whose continuation lines
+;; \(see `visual-line-mode') should be indented.  Only do this if
+;; `visual-line-mode' and `word-wrap' is on.
 
-Return nil."
-  ;; Fix-me: break up for `jit-lock-register': two args, beg end, no rules for return value.
-  ;; See (require 'glasses)
-  (visual-indent-jit-lock-fun (point) bound)
-  ;; Do not set match-data, there is none, just return nil.
-  nil)
+;; Return nil."
+;;   ;; Fix-me: break up for `jit-lock-register': two args, beg end, no rules for return value.
+;;   ;; See (require 'glasses)
+;;   (visual-indent-jit-lock-fun (point) bound)
+;;   ;; Do not set match-data, there is none, just return nil.
+;;   nil)
 
-(defun visual-indent-font-lock (on)
-  ;; See mlinks.el
-  (let* ((add-or-remove (if on 'font-lock-add-keywords 'font-lock-remove-keywords))
-         (fontify-fun 'visual-indent-fontify)
-         (args (list nil `(( ,fontify-fun ( 0 'font-lock-warning-face t ))))))
-    (when fontify-fun
-      (when on (setq args (append args (list t))))
-      (apply add-or-remove args)
-      (font-lock-mode -1)
-      (font-lock-mode 1))))
+;; (defun visual-indent-font-lock (on)
+;;   ;; See mlinks.el
+;;   (let* ((add-or-remove (if on 'font-lock-add-keywords 'font-lock-remove-keywords))
+;;          (fontify-fun 'visual-indent-fontify)
+;;          (args (list nil `(( ,fontify-fun ( 0 'font-lock-warning-face t ))))))
+;;     (when fontify-fun
+;;       (when on (setq args (append args (list t))))
+;;       (apply add-or-remove args)
+;;       (font-lock-mode -1)
+;;       (font-lock-mode 1))))
 
 (provide 'wrap-to-fill)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

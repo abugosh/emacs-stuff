@@ -371,6 +371,12 @@
         (list 'menu-item "Last Resort" 'n-back-game))
       (define-key tools-map [nxhtml-pause]
         (list 'menu-item "Life Reminder" 'pause-start-in-new-emacs))
+      (define-key tools-map [nxhtml-bib-separator]
+        (list 'menu-item "--" nil))
+      (define-key tools-map [nxhtml-bibhlp]
+        (list 'menu-item "Bibliographic Tool" 'bibhlp))
+      (define-key tools-map [nxhtml-idxsearch]
+        (list 'menu-item "Indexed Search" 'idxsearch))
       (define-key tools-map [nxhtml-last-resort-separator]
         (list 'menu-item "--" nil))
       (define-key tools-map [nxhtml-viper-tut]
@@ -540,9 +546,14 @@
                                        flymake-mode))
               :enable '(and buffer-file-name
                             (require 'flymake)
-                            (fboundp 'flymake-get-init-function)
-                            (flymake-get-init-function buffer-file-name)
+                            (or (flymake-get-init-function buffer-file-name)
+                                (require 'flymake-files)
+                                (flymake-get-init-function buffer-file-name))
                             )))
+      (define-key tools-map [nxhtml-flymake-global]
+        (list 'menu-item "Flymake Global Mode" 'flymake-global-mode
+              :button '(:toggle . flymake-global-mode)))
+
       (let ((flyspell-map (make-sparse-keymap)))
         (define-key tools-map [nxhtml-flyspell-map]
           (list 'menu-item "Flyspell" flyspell-map))
@@ -944,6 +955,11 @@
               :button '(:toggle . (and (boundp 'inlimg-global-mode)
                                        inlimg-global-mode))))
       (define-key options-map [nxhtml-opt-sep] (list 'menu-item "--"))
+      (define-key options-map [nxhtml-chrome-server]
+        (list 'menu-item "Google Chrome Edit Server" 'google-chrome-server-mode
+              :button '(:toggle . (and (boundp 'google-chrome-server-mode)
+                                       google-chrome-server-mode))))
+      (define-key options-map [nxhtml-server-separator] (list 'menu-item "--" nil))
       (define-key options-map [nxhtml-hl-needed-mode]
         (list 'menu-item "Tell Me Where I Am" 'hl-needed-mode
               :button '(:toggle . (and (boundp 'hl-needed-mode)
@@ -1116,6 +1132,14 @@
       (define-key edit-map [nxhtml-ldir-replace]
         (list 'menu-item "Replace in Files in Directory" 'ldir-query-replace))
 
+      (define-key edit-map [nxhtml-edit-sepgrep] (list 'menu-item "--"))
+      (define-key edit-map [nxhtml-lgrep]
+        (list 'menu-item "Search in Files in Directory" 'lgrep))
+      (define-key edit-map [nxhtml-rgrep]
+        (list 'menu-item "Search in Files in Tree" 'rgrep))
+
+      ;; (define-key edit-map [nxhtml-edit-sepidx] (list 'menu-item "--"))
+
       (define-key edit-map [nxhtml-edit-sep2] (list 'menu-item "--"))
       (define-key edit-map [nxhtml-multi-occur]
         (list 'menu-item "Occur in File Buffers" 'multi-occur-in-matching-buffers))
@@ -1125,6 +1149,8 @@
       (define-key edit-map [nxhtml-re-builder]
         (list 'menu-item "Re-Builder" 're-builder))
       (define-key edit-map [nxhtml-edit-sep4] (list 'menu-item "--"))
+      (define-key edit-map [nxhtml-paste-as-new-buffer]
+        (list 'menu-item "Paste as New Buffer" 'paste-as-new-buffer))
       (let ((copy+paste-map (make-sparse-keymap "copy+paste")))
         (define-key edit-map [nxhtml-copy+paste-map]
           (list 'menu-item "Copy+Paste" copy+paste-map))
@@ -1236,10 +1262,7 @@
                                        html-site-global-mode))))
       (define-key site-map [nxhtml-site-separator] (list 'menu-item "--"))
       (define-key site-map [nxhtml-customize-site-list]
-        (list 'menu-item "Edit Sites" (lambda ()
-                                        "Customize option `html-size-list'."
-                                        (interactive)
-                                        (customize-option-other-window 'html-site-list))))
+        (list 'menu-item "Edit Sites" 'html-site-edit-sites))
       (define-key site-map [nxhtml-set-site]
         (list 'menu-item "Set Current Site" 'html-site-set-site))
       (define-key site-map [nxhtml-site-separator-1] (list 'menu-item "--"))

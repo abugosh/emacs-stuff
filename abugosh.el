@@ -45,6 +45,9 @@
 (require 'zencoding-mode)
 (add-hook 'sgml-mode-hook 'zencoding-mode) ;; Auto-start on any markup modes
 
+(setq mumamo-chunk-coloring 'submode-colored)
+(add-to-list 'auto-mode-alist '("\\.html\\.erb\\'" . eruby-nxhtml-mumamo-mode))
+
 (setq browse-url-browser-function 'browse-default-macosx-browser)
 
 (load (concat dotfiles-dir "vendor/ess/lisp/ess-site.el"))

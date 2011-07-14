@@ -318,7 +318,7 @@ debugging by tells how far down we are in the call chain."
             (misbuf  " *Winsav information: Buffer is gone*"))
         (or (windowp ovlwin)
             (not ovlwin)
-          (error "Parameter mismatch, ovlwin not window: %s" ovlwin))
+            (error "Parameter mismatch, ovlwin not window: %s" ovlwin))
         (when first-call
           (add-to-list 'winsav-put-return (list ovlwin window))
           (when (eq 'buffer buffer)
@@ -374,7 +374,7 @@ debugging by tells how far down we are in the call chain."
             (goto-char point))
           (set-window-point window point)
           ;;(unless (buffer-live-p buffer) (setq point 1) (setq start 1))
-          (set-window-start window start)
+          (when start (set-window-start window start))
           ;; Maybe point got off screen?
           (when (/= point (window-point window))
             (set-window-point window point)))
@@ -1211,7 +1211,7 @@ Fix-me: RELEASE is not implemented."
         (message "winsav-save-config:here g")
         ;;(save-buffer 0) ;; No backups
         ;;(kill-buffer)
-        
+
         ;;(with-current-buffer (find-file-noselect file)
         (let ((coding-system-for-write 'utf-8))
           (write-region (point-min) (point-max) conf-file nil 'nomessage))
@@ -1269,7 +1269,7 @@ Delete the frames that were used before."
                   (setq num-old-deleted (1+ num-old-deleted))
                   (delete-frame old)))
               )
-            (message "winsav-after-restore-hook =%S" winsav-after-restore-hook)
+            ;;(message "winsav-after-restore-hook =%S" winsav-after-restore-hook)
             (run-hooks 'winsav-after-restore-hook)
             (message "Winsav: %s frame(s) restored" (length winsav-loaded-frames))
             t)
